@@ -1,6 +1,6 @@
 #!/bin/bash
 function usage {
-  echo "Usage $0 <number_of_processes>"
+  echo "Usage $0 <number_of_processes> [<number_of_tasks>]"
   exit
 }
 
@@ -18,20 +18,30 @@ then
   exit
 fi
 
+if [[ ! -z "$2" ]]
+then
+  tasks=$2
+else
+  tasks=10
+fi
+
+# Init log file
+echo "Queue test with $qty parallel processes and $tasks tasks running at" $(date -Is) |tee test-result.log
+
 for id in $(seq $qty)
-do php queueTimingTest.php $id &
-done | tee test-result.log
+do php queueTimingTest.php $id $qty $tasks &
+done | tee -a test-result.log
 wait
 
 # Check all tasks ran.
 there_were_errors=
-for id in $(seq 10)
+for id in $(seq $tasks)
 do
   n=$(grep "Task $id running" test-result.log | wc -l)
   if [ "$n" != "1" ]
   then
-    echo "ERROR: Task $id ran $n times\!"
+    echo "ERROR: Task $id ran $n times" |tee -a test-result.log
     there_were_errors=yes
   fi
 done
-[[ -z "$there_were_errors" ]] && echo "Each task ran once."
+[[ -z "$there_were_errors" ]] && echo "Each task ran once." | tee -a test-result.log

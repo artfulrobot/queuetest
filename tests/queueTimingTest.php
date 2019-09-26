@@ -51,20 +51,16 @@ function cv($cmd, $decode = 'json') {
   }
 }
 
-// $config = cv('vars:show');
-// printf("We should navigate to the dsahboard: %s\n\n", cv('url civicrm/dashboard'));
 
 function die_with_help() {
   global $argv;
-  echo "Usage: $argv[0] <id>\n";
+  echo "Usage: $argv[0] <id> <processes> <tasks>\n";
   echo "\n";
-  echo "Where <id> is a number to uniquely identify this process. Note that the process called with '1' will create the queue.\n";
-  echo "Typical invocation:\n";
+  echo "- <id> is a number to uniquely identify this process. Note that the process called with '1' will create the queue.\n";
+  echo "- <processes> total processes being run (just used for formatting).\n";
+  echo "- <tasks> is a number of tasks to create.\n";
   echo "\n";
-  echo "    for id in \$(seq 5); do $argv[0] \$id & ; done | tee log ;wait\n";
-  echo "\n";
-  echo "\n";
-  echo "Change 2 for a higher number for a more aggressive test\n";
+  echo "Typical invocation is via runTest\n";
   echo "\n";
   exit;
 }
@@ -74,17 +70,28 @@ class QueueTimingTest
 {
   public $process_id;
   public $start_time;
+  public $tasks;
+  public static $processes;
 
-  public function __construct($process_id, $start_time) {
+  public function __construct($process_id, $processes, $tasks) {
     $this->process_id = $process_id;
-    $this->start_time = $start_time;
+    static::$processes = $processes;
+    $this->tasks = $tasks;
+
+    // At least 30s ahead, on the :00 or :30
+    $this->start_time = strtotime(date('H:i'));
+    $now = time();
+    while (($this->start_time - $now) < 10) {
+      $this->start_time += 10;
+    }
+
     $this->log("Booted");
     if ($process_id == '1') {
       $this->createQueue();
     }
   }
   public function log($message) {
-    printf('%-30s %s',
+    printf('%-' . (static::$processes*3) . 's %s',
       str_repeat(" ", 2*$this->process_id) . "#$this->process_id",
       "$message\n");
   }
@@ -95,12 +102,12 @@ class QueueTimingTest
       'name' => 'queue-test',
       'reset' => true, // remove a previous queue.
     ]);
-    for ($i=1; $i<11; $i++) {
+    for ($i=1; $i<=$this->tasks; $i++) {
       $queue->createItem(new CRM_Queue_Task(
         ['QueueTimingTest', 'processTask'], [$i], "Task $i"
       ));
     }
-    $this->log("Created a queue with 10 tasks.");
+    $this->log("Created a queue with $this->tasks tasks.");
   }
   public function onYourMarksSetGo() {
     $human = date('H:i:s', $this->start_time);
@@ -112,7 +119,7 @@ class QueueTimingTest
         sleep(1);
       } while ($wait > 3);
       fwrite(STDERR, "\r                                   \r");
-      print "------------------------------ All processes should have booted.\n";
+      print str_repeat("---", static::$processes) . " All processes should have booted.\n";
     }
     $wait = $this->start_time - microtime(TRUE);
     sleep($wait);
@@ -155,7 +162,7 @@ class QueueTimingTest
     $this->log("Completed.");
   }
   public static function processTask($ctx, $i) {
-    printf('%-30s %s', '', "(Task $i running)\n");
+    printf('%-' . (static::$processes*3) . 's %s', '', "(Task $i running)\n");
     return TRUE;
   }
   public function onEnd() {
@@ -171,28 +178,10 @@ eval(cv('php:boot', 'phpcode'));
 ob_end_flush();
 ob_implicit_flush();
 
-if ($argc < 2 || in_array($argv[1] ?? '', ['help', '--help', '-h'])) {
+if ($argc < 4 || in_array($argv[1] ?? '', ['help', '--help', '-h'])) {
   die_with_help();
 }
 
 
-// Parse command args.
-
-if (!empty($argv[2])) {
-  $start_time = strtotime($argv[1]);
-  if ($start_time === FALSE || $start_time < time()+5) {
-    echo "ERROR: start time is not valid.\n\n";
-    die_with_help();
-  }
-}
-else {
-  // At least 30s ahead, on the :00 or :30
-  $start_time = strtotime(date('H:i'));
-  $now = time();
-  while (($start_time - $now) < 10) {
-    $start_time += 10;
-  }
-}
-
-$queueTimingTest = new QueueTimingTest($argv[1], $start_time);
+$queueTimingTest = new QueueTimingTest($argv[1], $argv[2], $argv[3]);
 $queueTimingTest->onYourMarksSetGo();
