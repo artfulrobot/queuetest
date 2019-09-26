@@ -1,0 +1,37 @@
+#!/bin/bash
+function usage {
+  echo "Usage $0 <number_of_processes>"
+  exit
+}
+
+if [ ! -e queueTimingTest.php ]
+then
+  echo "Call from the directory that contains this script.\n" >&2
+  usage
+fi
+
+qty=$1
+if [[ "$qty" -lt 1 ]]
+then
+  echo "Call with at least 1 process!" >&2
+  usage
+  exit
+fi
+
+for id in $(seq $qty)
+do php queueTimingTest.php $id &
+done | tee test-result.log
+wait
+
+# Check all tasks ran.
+there_were_errors=
+for id in $(seq 10)
+do
+  n=$(grep "Task $id running" test-result.log | wc -l)
+  if [ "$n" != "1" ]
+  then
+    echo "ERROR: Task $id ran $n times\!"
+    there_were_errors=yes
+  fi
+done
+[[ -z "$there_were_errors" ]] && echo "Each task ran once."
