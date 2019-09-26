@@ -54,11 +54,12 @@ function cv($cmd, $decode = 'json') {
 
 function die_with_help() {
   global $argv;
-  echo "Usage: $argv[0] <id> <processes> <tasks>\n";
+  echo "Usage: $argv[0] <id> <processes> <tasks> <queueType>\n";
   echo "\n";
   echo "- <id> is a number to uniquely identify this process. Note that the process called with '1' will create the queue.\n";
   echo "- <processes> total processes being run (just used for formatting).\n";
   echo "- <tasks> is a number of tasks to create.\n";
+  echo "- <queueType> Start with Sql (note capitalisation).\n";
   echo "\n";
   echo "Typical invocation is via runTest\n";
   echo "\n";
@@ -70,11 +71,13 @@ class QueueTimingTest
 {
   public $process_id;
   public $start_time;
+  public $queue_type;
   public $tasks;
   public static $processes;
 
-  public function __construct($process_id, $processes, $tasks) {
+  public function __construct($process_id, $processes, $tasks, $queue_type) {
     $this->process_id = $process_id;
+    $this->queue_type = $queue_type;
     static::$processes = $processes;
     $this->tasks = $tasks;
 
@@ -98,7 +101,7 @@ class QueueTimingTest
   public function createQueue() {
     $this->log("Creating a queue.");
     $queue = CRM_Queue_Service::singleton()->create([
-      'type' => 'Sql',
+      'type' => $this->queue_type,
       'name' => 'queue-test',
       'reset' => true, // remove a previous queue.
     ]);
@@ -128,7 +131,7 @@ class QueueTimingTest
   }
   public function runQueue() {
     $queue = CRM_Queue_Service::singleton()->create([
-      'type' => 'Sql',
+      'type' => $this->queue_type,
       'name' => 'queue-test',
       'reset' => false, // load existing queue.
     ]);
@@ -170,18 +173,19 @@ class QueueTimingTest
   }
 }
 
-
 // CV boot.
 eval(cv('php:boot', 'phpcode'));
+
+require_once(__DIR__ . '/../CRM/Queue/Queue/Sql2.php');
 
 // Disable output buffering.
 ob_end_flush();
 ob_implicit_flush();
 
-if ($argc < 4 || in_array($argv[1] ?? '', ['help', '--help', '-h'])) {
+if ($argc < 5 || in_array($argv[1] ?? '', ['help', '--help', '-h'])) {
   die_with_help();
 }
 
 
-$queueTimingTest = new QueueTimingTest($argv[1], $argv[2], $argv[3]);
+$queueTimingTest = new QueueTimingTest($argv[1], $argv[2], $argv[3], $argv[4]);
 $queueTimingTest->onYourMarksSetGo();

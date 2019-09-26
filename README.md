@@ -17,7 +17,7 @@ From the directory where you store your extensions...
 ```bash
 git clone https://github.com/artfulrobot/queuetest.git
 cd queuetest/tests
-./runTest 10
+./runTest 10 20 Sql
 ```
 
 This will run a test with 10 simultaneous processes. The processes will all be
@@ -27,7 +27,7 @@ now, but on the 10s (i.e. 9:23:00 or 9:23:10 or 9:23:20...).
 The output (which is saved in test-result.log) looks like this:
 
 ```
-Queue test with 3 parallel processes and 5 tasks running at 2019-09-26T11:39:20+01:00
+Queue test with 3 parallel processes and 5 tasks using Sql queue running at 2019-09-26T11:39:20+01:00
   #1      Booted
   #1      Creating a queue.
     #2    Booted

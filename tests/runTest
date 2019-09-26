@@ -1,6 +1,8 @@
 #!/bin/bash
 function usage {
-  echo "Usage $0 <number_of_processes> [<number_of_tasks>]"
+  echo "Usage $0 <number_of_processes> <number_of_tasks> <queuetype>"
+  echo ""
+  echo "<queuetype> Sql (default CiviCRM queue) or Sql2 (included here)"
   exit
 }
 
@@ -15,21 +17,27 @@ if [[ "$qty" -lt 1 ]]
 then
   echo "Call with at least 1 process!" >&2
   usage
-  exit
 fi
 
-if [[ ! -z "$2" ]]
+tasks=$2
+if [[ "$tasks" -lt 1 ]]
 then
-  tasks=$2
-else
-  tasks=10
+  echo "Call with at least 1 task!" >&2
+  usage
+fi
+
+queue_type=$3
+if [[ -z "$queue_type" ]]
+then
+  echo "Queue type missing" >&2
+  usage
 fi
 
 # Init log file
-echo "Queue test with $qty parallel processes and $tasks tasks running at" $(date -Is) |tee test-result.log
+echo "Queue test with $qty parallel processes and $tasks tasks using $queue_type queue, running at" $(date -Is) |tee test-result.log
 
 for id in $(seq $qty)
-do php queueTimingTest.php $id $qty $tasks &
+do php queueTimingTest.php $id $qty $tasks "$queue_type" &
 done | tee -a test-result.log
 wait
 
