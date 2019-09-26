@@ -128,10 +128,8 @@ class CRM_Queue_Queue_Sql2 extends CRM_Queue_Queue {
   public function claimItem($lease_time = 3600) {
 
     $result = NULL;
-    $me = $this;
-    CRM_Core_Transaction::create()->run(function($tx) use ($me, $lease_time, &$result){
-      $dao = CRM_Core_DAO::executeQuery('LOCK TABLES civicrm_queue_item WRITE;');
-      $sql = "
+    $dao = CRM_Core_DAO::executeQuery('LOCK TABLES civicrm_queue_item WRITE;');
+    $sql = "
         SELECT first_in_queue.* FROM (
           SELECT id, queue_name, submit_time, release_time, data
           FROM civicrm_queue_item
@@ -141,34 +139,32 @@ class CRM_Queue_Queue_Sql2 extends CRM_Queue_Queue {
         ) first_in_queue
         WHERE release_time IS NULL OR release_time < NOW()
       ";
-      $params = [
-        1 => [$me->getName(), 'String'],
-      ];
-      $dao = CRM_Core_DAO::executeQuery($sql, $params, TRUE, 'CRM_Queue_DAO_QueueItem');
-      if (is_a($dao, 'DB_Error')) {
-        // FIXME - Adding code to allow tests to pass
-        // queuetest: CRM_Core_Error::fatal();
-        echo "executeQuery failed!";
-        print_r($dao);
-        exit;
-      }
+    $params = [
+      1 => [$this->getName(), 'String'],
+    ];
+    $dao = CRM_Core_DAO::executeQuery($sql, $params, TRUE, 'CRM_Queue_DAO_QueueItem');
+    if (is_a($dao, 'DB_Error')) {
+      // FIXME - Adding code to allow tests to pass
+      CRM_Core_Error::fatal();
+    }
 
-      if ($dao->fetch()) {
-        $nowEpoch = CRM_Utils_Time::getTimeRaw();
-        CRM_Core_DAO::executeQuery("UPDATE civicrm_queue_item SET release_time = %1 WHERE id = %2", [
-          '1' => [date('YmdHis', $nowEpoch + $lease_time), 'String'],
-          '2' => [$dao->id, 'Integer'],
-        ]);
-        // work-around: inconsistent date-formatting causes unintentional breakage
-        #        $dao->submit_time = date('YmdHis', strtotime($dao->submit_time));
-        #        $dao->release_time = date('YmdHis', $nowEpoch + $lease_time);
-        #        $dao->save();
-        $dao->data = unserialize($dao->data);
-        $result = $dao;
-      }
+    if ($dao->fetch()) {
+      $nowEpoch = CRM_Utils_Time::getTimeRaw();
+      CRM_Core_DAO::executeQuery("UPDATE civicrm_queue_item SET release_time = %1 WHERE id = %2", [
+        '1' => [date('YmdHis', $nowEpoch + $lease_time), 'String'],
+        '2' => [$dao->id, 'Integer'],
+      ]);
+      // (Comment by artfulrobot Sep 2019: Not sure what the below comment means, should be removed/clarified?)
+      // work-around: inconsistent date-formatting causes unintentional breakage
+      #        $dao->submit_time = date('YmdHis', strtotime($dao->submit_time));
+      #        $dao->release_time = date('YmdHis', $nowEpoch + $lease_time);
+      #        $dao->save();
+      $dao->data = unserialize($dao->data);
+      $result = $dao;
+    }
 
-      $dao = CRM_Core_DAO::executeQuery('UNLOCK TABLES;');
-    });
+    $dao = CRM_Core_DAO::executeQuery('UNLOCK TABLES;');
+
     return $result;
   }
 
