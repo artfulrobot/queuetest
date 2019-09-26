@@ -130,6 +130,7 @@ class CRM_Queue_Queue_Sql2 extends CRM_Queue_Queue {
     $result = NULL;
     $me = $this;
     CRM_Core_Transaction::create()->run(function($tx) use ($me, $lease_time, &$result){
+      $dao = CRM_Core_DAO::executeQuery('LOCK TABLES civicrm_queue_item WRITE;');
       $sql = "
         SELECT first_in_queue.* FROM (
           SELECT id, queue_name, submit_time, release_time, data
@@ -139,7 +140,6 @@ class CRM_Queue_Queue_Sql2 extends CRM_Queue_Queue {
           LIMIT 1
         ) first_in_queue
         WHERE release_time IS NULL OR release_time < NOW()
-        FOR UPDATE
       ";
       $params = [
         1 => [$me->getName(), 'String'],
@@ -166,6 +166,8 @@ class CRM_Queue_Queue_Sql2 extends CRM_Queue_Queue {
         $dao->data = unserialize($dao->data);
         $result = $dao;
       }
+
+      $dao = CRM_Core_DAO::executeQuery('UNLOCK TABLES;');
     });
     return $result;
   }
