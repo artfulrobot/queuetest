@@ -60,5 +60,5 @@ Each task ran once.
 - At the end you want to see "Each task ran once", otherwise you'll see
   errors like "ERROR: Task 23 ran 2 times"
 
-My initial tests show that 50 tasks and 25 processes usually result in errors.
-
+There's an alternate SQL Queue class which you can test by passing `Sql2` as the
+last argument.
