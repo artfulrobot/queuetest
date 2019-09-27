@@ -52,4 +52,10 @@ do
     there_were_errors=yes
   fi
 done
-[[ -z "$there_were_errors" ]] && echo "Each task ran once." | tee -a test-result.log
+if [[ -z "$there_were_errors" ]]
+then
+  echo "Each task ran once." | tee -a test-result.log
+  exit 0
+else
+  exit 1
+fi
