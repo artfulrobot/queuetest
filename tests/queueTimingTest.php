@@ -166,6 +166,14 @@ class QueueTimingTest
   }
   public static function processTask($ctx, $i) {
     printf('%-' . (static::$processes*3) . 's %s', '', "(Task $i running)\n");
+    // Take 0.5 - 2s to complete.
+    $s=(rand(50, 200))/100;
+    if ($i == 1) {
+      // Slow the first task more.
+      $s=3;
+    }
+    sleep($s);
+    printf('%-' . (static::$processes*3) . 's %s', '', "(Task $i completed {$s}s)\n");
     return TRUE;
   }
   public function onEnd() {

@@ -43,19 +43,25 @@ wait
 
 # Check all tasks ran.
 there_were_errors=
+all_jobs_ran=yes
 for id in $(seq $tasks)
 do
   n=$(grep "Task $id running" test-result.log | wc -l)
   if [ "$n" != "1" ]
   then
+    all_jobs_ran=
     echo "ERROR: Task $id ran $n times" |tee -a test-result.log
     there_were_errors=yes
   fi
 done
+
+php './resultsParse.php'
+
 if [[ -z "$there_were_errors" ]]
 then
-  echo "Each task ran once." | tee -a test-result.log
+  echo "Each task ran once. $in_order" | tee -a test-result.log
   exit 0
 else
+  echo $in_order
   exit 1
 fi
